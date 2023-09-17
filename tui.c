@@ -4,6 +4,8 @@
 #include <wchar.h>
 #include <locale.h>
 #include <stdbool.h>
+#include <termios.h>
+#include <unistd.h>
 
 struct color {
     unsigned char r;
@@ -33,27 +35,45 @@ void render_buffer_to_str(size_t rows, size_t cols, buffer *buf, struct str_buff
 
 const struct color DEFAULT_FG_COLOR = { .r = 255, .g = 255, .b = 255 };
 const struct color DEFAULT_BG_COLOR = { .r = 0, .g = 0, .b = 0 };
-const bool NO_DEFAULT_BG_COLOR = false; 
+const bool NO_DEFAULT_BG_COLOR = true; 
 const size_t ROWS = 24; 
 const size_t COLS = 80; 
 
 int main() {
     setlocale(LC_CTYPE, "");
-    fputws(L"\e[?1049h", stdout);
+
+    fputws(L"\e[?1049h", stdout); //enable alternate buffer
     fflush(stdout);
+
+    struct termios old_term, new_term;
+    tcgetattr(STDIN_FILENO, &old_term);
+    new_term = old_term;
+    new_term.c_lflag &= (~ICANON & ~ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &new_term);
+
+    buffer buf;
     size_t str_buf_size = ROWS * COLS * sizeof(wchar_t) * 20 + 1;
     struct str_buffer str_buf;
-    init_str_buffer(str_buf_size, &str_buf);
-    buffer buf;
+
     init_buffer(ROWS, COLS, &buf);
-    buf[10][10].character = L'E';
-    render_buffer_to_str(ROWS, COLS, &buf, &str_buf);
-    fputws(str_buf.data, stdout);
-    fflush(stdout);
-    getc(stdin);
+    init_str_buffer(str_buf_size, &str_buf);
+
+    while(true) {
+        render_buffer_to_str(ROWS, COLS, &buf, &str_buf);
+        fputws(str_buf.data, stdout);
+        fflush(stdout);
+        unsigned char c;
+        read(STDIN_FILENO, &c, 1);
+        if(c == '\e') {
+            break;
+        }
+    }
+
+
     free_buffer(ROWS, &buf);
     free_str_buffer(&str_buf);
-    fputws(L"\e[?1049l", stdout);
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
+    fputws(L"\e[?1049l", stdout); //disable alternate buffer
 
     return 0;
 }
@@ -118,7 +138,7 @@ void append_color_to_str(const wchar_t *format, struct str_buffer *str_buf, stru
 
 void render_buffer_to_str(size_t rows, size_t cols, buffer *buf, struct str_buffer *str_buf) {
     str_buf->length = 0;
-    append_to_str(L"\e[0m\e[2J\e[H", str_buf);
+    append_to_str(L"\e[0m\e[2J\e[H", str_buf); //reset mode, erase screen, return cursor to home position
     append_color_to_str(L"\e[38;2;%d;%d;%dm", str_buf, DEFAULT_FG_COLOR);
     if(!NO_DEFAULT_BG_COLOR) {
         append_color_to_str(L"\e[48;2;%d;%d;%dm", str_buf, DEFAULT_BG_COLOR);
