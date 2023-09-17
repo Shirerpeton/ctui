@@ -46,6 +46,7 @@ int main() {
     setlocale(LC_CTYPE, "");
 
     fputws(L"\e[?1049h", stdout); //enable alternate buffer
+    fputws(L"\e[?25l", stdout); //set cursor invisible
     fflush(stdout);
 
     struct termios old_term, new_term;
@@ -64,20 +65,37 @@ int main() {
     init_str_buffer(str_buf_size, &str_buf);
 
 
-    unsigned char c;
+    char seq[3];
     unsigned int i = 0;
     const struct timespec req = { .tv_sec = 0, .tv_nsec = DELAY };
     while(true) {
         render_buffer_to_str(ROWS, COLS, &buf, &str_buf);
         fputws(str_buf.data, stdout);
         fflush(stdout);
-        if(read(STDIN_FILENO, &c, 1) > 0) {
-            if(c == '\e') {
+        if(read(STDIN_FILENO, &seq[0], 1) > 0) {
+            if(seq[0] == '\e') {
+                if(read(STDIN_FILENO, &seq[1], 1) > 0 &&
+                   read(STDIN_FILENO, &seq[2], 1) > 0) {
+                    if(seq[1] == '[') {
+                        switch(seq[2]) {
+                            case 'A': //up arrow
+                                break;
+                            case 'B': //down arrow
+                                break;
+                            case 'C': //right arrow
+                                break;
+                            case 'D': //left arrow
+                                break;
+                        }
+                    }
+                } else {
+                    break;
+                }
+            } else if(seq[0] == 'q') {
                 break;
             }
         } else {
             wprintf(L"frame: %d\n", i++);
-            wprintf(L"delay: %d\n", DELAY);
             nanosleep(&req, NULL);
         }
     }
@@ -87,6 +105,7 @@ int main() {
     free_str_buffer(&str_buf);
     tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
     fputws(L"\e[?1049l", stdout); //disable alternate buffer
+    fputws(L"\e[?25h", stdout); //set cursor invisible
 
     return 0;
 }
