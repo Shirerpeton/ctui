@@ -117,7 +117,7 @@ void append_color_to_str(const wchar_t *format, struct str_buffer *str_buf, stru
 }
 
 void render_buffer_to_str(size_t rows, size_t cols, buffer *buf, struct str_buffer *str_buf) {
-    size_t offset = 0;
+    str_buf->length = 0;
     append_to_str(L"\e[0m\e[2J\e[H", str_buf);
     append_color_to_str(L"\e[38;2;%d;%d;%dm", str_buf, DEFAULT_FG_COLOR);
     if(!NO_DEFAULT_BG_COLOR) {
