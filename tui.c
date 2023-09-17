@@ -35,6 +35,29 @@ void refresh(struct tui *tui) {
     fflush(stdout);
 }
 
+
+int print_tui(struct tui *tui, struct print_options print_opt, wchar_t *str) {
+    if(print_opt.x > COLS || print_opt.y > ROWS) {
+        return 1;
+    }
+    int len = wcslen(str);
+    for(int i = 0; i < len; i++) {
+        struct cell *curr_cell = &tui->buf[print_opt.y][print_opt.x + i];
+        curr_cell->character = str[i];
+        if(print_opt.fg_color != NULL) {
+            curr_cell->fg_color.r = print_opt.fg_color->r;
+            curr_cell->fg_color.g = print_opt.fg_color->g;
+            curr_cell->fg_color.b = print_opt.fg_color->b;
+        }
+        if(print_opt.bg_color != NULL) {
+            curr_cell->bg_color.r = print_opt.bg_color->r;
+            curr_cell->bg_color.g = print_opt.bg_color->g;
+            curr_cell->bg_color.b = print_opt.bg_color->b;
+        }
+    }
+    return 0;
+}
+
 void init_buffer(buffer *buf) {
     *buf = malloc(ROWS * sizeof(struct cell *));
     for(size_t i = 0; i < ROWS; i++) {

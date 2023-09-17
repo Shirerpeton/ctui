@@ -31,6 +31,9 @@ int main() {
     unsigned int frame = 0;
     const struct timespec req = { .tv_sec = 0, .tv_nsec = DELAY };
     while(true) {
+        struct color curr_fg_color = { .r = 255, .g = 255, .b = 0 };
+        struct print_options print_opts = { .x = 10, .y = 10, .fg_color = &curr_fg_color, .bg_color = NULL };
+        print_tui(tui, print_opts, L"something");
         refresh(tui);
         if(read(STDIN_FILENO, &seq[0], 1) > 0) {
             if(seq[0] == '\e') {
