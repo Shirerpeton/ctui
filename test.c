@@ -30,9 +30,10 @@ int main() {
     char seq[3];
     unsigned int frame = 0;
     const struct timespec req = { .tv_sec = 0, .tv_nsec = DELAY };
+    struct color curr_fg_color = { .r = 255, .g = 255, .b = 0 };
+    struct color curr_bg_color = { .r = 30, .g = 30, .b = 30 };
+    struct print_options print_opts = { .x = 10, .y = 10, .fg_color = &curr_fg_color, .bg_color = &curr_bg_color };
     while(true) {
-        struct color curr_fg_color = { .r = 255, .g = 255, .b = 0 };
-        struct print_options print_opts = { .x = 10, .y = 10, .fg_color = &curr_fg_color, .bg_color = NULL };
         print_tui(tui, print_opts, L"something");
         refresh(tui);
         if(read(STDIN_FILENO, &seq[0], 1) > 0) {

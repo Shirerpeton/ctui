@@ -10,7 +10,7 @@ void free_str_buffer(struct str_buffer *str_buf);
 void render_buffer_to_str(buffer *buf, struct str_buffer *str_buf);
 
 const struct color DEFAULT_FG_COLOR = { .r = 255, .g = 255, .b = 255 };
-const struct color DEFAULT_BG_COLOR = { .r = 0, .g = 0, .b = 0 };
+const struct color DEFAULT_BG_COLOR = { .r = 10, .g = 10, .b = 10 };
 const bool NO_DEFAULT_BG_COLOR = true; 
 const size_t ROWS = 24; 
 const size_t COLS = 80; 
@@ -30,7 +30,7 @@ void free_tui(struct tui *tui) {
 }
 
 void refresh(struct tui *tui) {
-    render_buffer_to_str(&(tui->buf), &(tui->str_buf));
+    render_buffer_to_str(&tui->buf, &tui->str_buf);
     fputws(tui->str_buf.data, stdout);
     fflush(stdout);
 }
@@ -139,7 +139,10 @@ void render_buffer_to_str(buffer *buf, struct str_buffer *str_buf) {
                 }
             }
             append_char_to_str(cur_cell->character, str_buf);
+            prev_fg_color = cur_cell->fg_color;
+            prev_bg_color = cur_cell->bg_color;
         }
         append_char_to_str(L'\n', str_buf);
     }
+    append_to_str(L"\e[0m", str_buf); //reset mode
 }
