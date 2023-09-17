@@ -6,6 +6,8 @@
 #include <stdbool.h>
 #include <termios.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <time.h>
 
 struct color {
     unsigned char r;
@@ -38,6 +40,7 @@ const struct color DEFAULT_BG_COLOR = { .r = 0, .g = 0, .b = 0 };
 const bool NO_DEFAULT_BG_COLOR = true; 
 const size_t ROWS = 24; 
 const size_t COLS = 80; 
+const int DELAY = 1.0 / 24.0 * 1000000000;
 
 int main() {
     setlocale(LC_CTYPE, "");
@@ -50,6 +53,8 @@ int main() {
     new_term = old_term;
     new_term.c_lflag &= (~ICANON & ~ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &new_term);
+    int fcntl_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, fcntl_flags | O_NONBLOCK);
 
     buffer buf;
     size_t str_buf_size = ROWS * COLS * sizeof(wchar_t) * 20 + 1;
@@ -58,14 +63,22 @@ int main() {
     init_buffer(ROWS, COLS, &buf);
     init_str_buffer(str_buf_size, &str_buf);
 
+
+    unsigned char c;
+    unsigned int i = 0;
+    const struct timespec req = { .tv_sec = 0, .tv_nsec = DELAY };
     while(true) {
         render_buffer_to_str(ROWS, COLS, &buf, &str_buf);
         fputws(str_buf.data, stdout);
         fflush(stdout);
-        unsigned char c;
-        read(STDIN_FILENO, &c, 1);
-        if(c == '\e') {
-            break;
+        if(read(STDIN_FILENO, &c, 1) > 0) {
+            if(c == '\e') {
+                break;
+            }
+        } else {
+            wprintf(L"frame: %d\n", i++);
+            wprintf(L"delay: %d\n", DELAY);
+            nanosleep(&req, NULL);
         }
     }
 
