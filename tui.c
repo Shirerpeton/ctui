@@ -35,7 +35,6 @@ void refresh(struct tui *tui) {
     fflush(stdout);
 }
 
-
 int print_tui(struct tui *tui, struct print_options print_opt, wchar_t *str) {
     if(print_opt.x > COLS || print_opt.y > ROWS) {
         return 1;
@@ -56,6 +55,17 @@ int print_tui(struct tui *tui, struct print_options print_opt, wchar_t *str) {
         }
     }
     return 0;
+}
+
+void clear(struct tui *tui) {
+    for(int i = 0; i < ROWS; i++) {
+        for(int j = 0; j < COLS; j++) {
+            struct cell *curr_cell = &tui->buf[i][j];
+            curr_cell->character = L' ';
+            curr_cell->fg_color = DEFAULT_FG_COLOR;
+            curr_cell->bg_color = DEFAULT_BG_COLOR;
+        }
+    }
 }
 
 void init_buffer(buffer *buf) {

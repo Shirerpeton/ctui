@@ -37,6 +37,7 @@ struct print_options {
 struct tui *init_tui();
 void free_tui(struct tui *tui);
 void refresh(struct tui *tui);
+void clear(struct tui *tui);
 int print_tui(struct tui *tui, struct print_options opt, wchar_t *str);
 
 #endif

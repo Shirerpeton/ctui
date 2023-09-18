@@ -9,8 +9,28 @@
 #include "tui.h"
 
 const int DELAY = 1.0 / 24.0 * 1000000000;
+const unsigned int TOTAL_STEPS = 24;
+
+void set_rand_color(struct color *color) {
+    color->r = rand() % 255;
+    color->g = rand() % 255;
+    color->b = rand() % 255;
+}
+
+unsigned char interpolate(unsigned char a, unsigned char b, unsigned int step) {
+    double change = ((a - b) / (double)(TOTAL_STEPS - step));
+    wprintf(L"change: %lf\n", change);
+    return b + change;
+}
+
+void interpolate_color(struct color *new_color, struct color *curr_color, unsigned int step) {
+    curr_color->r = interpolate(new_color->r, curr_color->r, step);
+    curr_color->g = interpolate(new_color->g, curr_color->g, step);
+    curr_color->b = interpolate(new_color->b, curr_color->b, step);
+}
 
 int main() {
+    srand(time(NULL));
     setlocale(LC_CTYPE, "");
 
     fputws(L"\e[?1049h", stdout); //enable alternate buffer
@@ -31,10 +51,24 @@ int main() {
     unsigned int frame = 0;
     const struct timespec req = { .tv_sec = 0, .tv_nsec = DELAY };
     struct color curr_fg_color = { .r = 255, .g = 255, .b = 0 };
-    struct color curr_bg_color = { .r = 30, .g = 30, .b = 30 };
-    struct print_options print_opts = { .x = 10, .y = 10, .fg_color = &curr_fg_color, .bg_color = &curr_bg_color };
+    struct print_options print_opts = { .x = 10, .y = 10, .fg_color = &curr_fg_color, .bg_color = NULL };
+    struct color new_fg_color;
+    set_rand_color(&new_fg_color);
+    unsigned int step;
     while(true) {
+        step = frame % TOTAL_STEPS; 
+        if(step == 0) {
+            set_rand_color(&new_fg_color);
+        } else {
+            interpolate_color(&new_fg_color, &curr_fg_color, step);
+        }
+        clear(tui);
         print_tui(tui, print_opts, L"something");
+        print_opts.y = 20;
+        wchar_t temp[50];
+        swprintf(temp, 50, L"r: %d", curr_fg_color.r);
+        print_tui(tui, print_opts, temp);
+        print_opts.y = 10;
         refresh(tui);
         if(read(STDIN_FILENO, &seq[0], 1) > 0) {
             if(seq[0] == '\e') {
