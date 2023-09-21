@@ -67,6 +67,7 @@ int main() {
             interpolate_color(&new_fg_color, &curr_fg_color, step);
         }
         clear(tui);
+        print_borders(tui, &curr_fg_color, NULL);
         print_tui(tui, print_opts, L"something");
         get_loading_bar(&loading_bar, loading_bar_length, frame % 100);
         print_opts.y = 15;

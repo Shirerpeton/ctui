@@ -36,10 +36,11 @@ void refresh(struct tui *tui) {
 }
 
 int print_tui(struct tui *tui, struct print_options print_opt, wchar_t *str) {
-    if(print_opt.x > tui->cols || print_opt.y > tui->rows ) {
+    int len = wcslen(str);
+    if(print_opt.x + len > tui->cols ||
+        print_opt.y > tui->rows) {
         return 1;
     }
-    int len = wcslen(str);
     for(int i = 0; i < len; i++) {
         struct cell *curr_cell = &tui->buf[print_opt.y][print_opt.x + i];
         curr_cell->character = str[i];
