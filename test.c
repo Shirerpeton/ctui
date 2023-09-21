@@ -7,9 +7,12 @@
 #include <fcntl.h>
 #include <time.h>
 #include "tui.h"
+#include "tui-elements.h"
 
 const int DELAY = 1.0 / 24.0 * 1000000000;
 const unsigned int TOTAL_STEPS = 24;
+const size_t ROWS = 30;
+const size_t COLS = 100;
 
 void set_rand_color(struct color *color) {
     color->r = rand() % 255;
@@ -19,7 +22,6 @@ void set_rand_color(struct color *color) {
 
 unsigned char interpolate(unsigned char a, unsigned char b, unsigned int step) {
     double change = ((a - b) / (double)(TOTAL_STEPS - step));
-    wprintf(L"change: %lf\n", change);
     return b + change;
 }
 
@@ -45,7 +47,7 @@ int main() {
     int fcntl_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
     fcntl(STDIN_FILENO, F_SETFL, fcntl_flags | O_NONBLOCK);
 
-    struct tui *tui = init_tui();
+    struct tui *tui = init_tui(ROWS, COLS);
 
     char seq[3];
     unsigned int frame = 0;
@@ -55,6 +57,8 @@ int main() {
     struct color new_fg_color;
     set_rand_color(&new_fg_color);
     unsigned int step;
+    size_t loading_bar_length = 50;
+    wchar_t *loading_bar = malloc(loading_bar_length * sizeof(wchar_t));
     while(true) {
         step = frame % TOTAL_STEPS; 
         if(step == 0) {
@@ -64,9 +68,23 @@ int main() {
         }
         clear(tui);
         print_tui(tui, print_opts, L"something");
+        get_loading_bar(&loading_bar, loading_bar_length, frame % 100);
+        print_opts.y = 15;
+        print_tui(tui, print_opts, loading_bar);
+        print_opts.x = print_opts.x + loading_bar_length;
+        wchar_t percent[5];
+        swprintf(percent, 5, L"%d%%", frame % 100);
+        print_tui(tui, print_opts, percent);
+        print_opts.x = 10;
         print_opts.y = 20;
         wchar_t temp[50];
         swprintf(temp, 50, L"r: %d", curr_fg_color.r);
+        print_tui(tui, print_opts, temp);
+        print_opts.y = 21;
+        swprintf(temp, 50, L"g: %d", curr_fg_color.g);
+        print_tui(tui, print_opts, temp);
+        print_opts.y = 22;
+        swprintf(temp, 50, L"b: %d", curr_fg_color.b);
         print_tui(tui, print_opts, temp);
         print_opts.y = 10;
         refresh(tui);

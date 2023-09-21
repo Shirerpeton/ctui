@@ -23,6 +23,8 @@ struct str_buffer {
 };
 
 struct tui {
+    size_t rows;
+    size_t cols;
     buffer buf;
     struct str_buffer str_buf;
 };
@@ -34,7 +36,7 @@ struct print_options {
     struct color *bg_color;
 };
 
-struct tui *init_tui();
+struct tui *init_tui(size_t rows, size_t cols);
 void free_tui(struct tui *tui);
 void refresh(struct tui *tui);
 void clear(struct tui *tui);

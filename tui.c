@@ -3,40 +3,40 @@
 #include <stdbool.h>
 #include "tui.h"
 
-void init_buffer(buffer *buf);
-void free_buffer(buffer *buf);
+void init_buffer(buffer *buf, size_t rows, size_t cols);
+void free_buffer(buffer *buf, size_t rows);
 void init_str_buffer(size_t capacity, struct str_buffer *str_buf);
 void free_str_buffer(struct str_buffer *str_buf);
-void render_buffer_to_str(buffer *buf, struct str_buffer *str_buf);
+void render_buffer_to_str(buffer *buf, struct str_buffer *str_buf, size_t rows, size_t cols);
 
 const struct color DEFAULT_FG_COLOR = { .r = 255, .g = 255, .b = 255 };
 const struct color DEFAULT_BG_COLOR = { .r = 10, .g = 10, .b = 10 };
 const bool NO_DEFAULT_BG_COLOR = true; 
-const size_t ROWS = 24; 
-const size_t COLS = 80; 
 
-struct tui *init_tui() {
+struct tui *init_tui(size_t rows, size_t cols) {
     struct tui *tui = malloc(sizeof(struct tui));
-    init_buffer(&tui->buf);
-    size_t str_buf_size = ROWS * COLS * sizeof(wchar_t) * 20 + 1;
+    tui->rows = rows;
+    tui->cols = cols;
+    init_buffer(&tui->buf, rows, cols);
+    size_t str_buf_size = rows * cols * sizeof(wchar_t) * 20 + 1;
     init_str_buffer(str_buf_size, &tui->str_buf);
     return tui;
 }
 
 void free_tui(struct tui *tui) {
-    free_buffer(&tui->buf);
+    free_buffer(&tui->buf, tui->rows);
     free_str_buffer(&tui->str_buf);
     free(tui);
 }
 
 void refresh(struct tui *tui) {
-    render_buffer_to_str(&tui->buf, &tui->str_buf);
+    render_buffer_to_str(&tui->buf, &tui->str_buf, tui->rows, tui->cols);
     fputws(tui->str_buf.data, stdout);
     fflush(stdout);
 }
 
 int print_tui(struct tui *tui, struct print_options print_opt, wchar_t *str) {
-    if(print_opt.x > COLS || print_opt.y > ROWS) {
+    if(print_opt.x > tui->cols || print_opt.y > tui->rows ) {
         return 1;
     }
     int len = wcslen(str);
@@ -58,8 +58,8 @@ int print_tui(struct tui *tui, struct print_options print_opt, wchar_t *str) {
 }
 
 void clear(struct tui *tui) {
-    for(int i = 0; i < ROWS; i++) {
-        for(int j = 0; j < COLS; j++) {
+    for(int i = 0; i < tui->rows; i++) {
+        for(int j = 0; j < tui->cols; j++) {
             struct cell *curr_cell = &tui->buf[i][j];
             curr_cell->character = L' ';
             curr_cell->fg_color = DEFAULT_FG_COLOR;
@@ -68,11 +68,11 @@ void clear(struct tui *tui) {
     }
 }
 
-void init_buffer(buffer *buf) {
-    *buf = malloc(ROWS * sizeof(struct cell *));
-    for(size_t i = 0; i < ROWS; i++) {
-        (*buf)[i] = malloc(COLS * sizeof(struct cell));
-        for(size_t j = 0; j < COLS; j++) {
+void init_buffer(buffer *buf, size_t rows, size_t cols) {
+    *buf = malloc(rows * sizeof(struct cell *));
+    for(size_t i = 0; i < rows; i++) {
+        (*buf)[i] = malloc(cols * sizeof(struct cell));
+        for(size_t j = 0; j < cols; j++) {
             (*buf)[i][j].character = L' ';
             (*buf)[i][j].fg_color = DEFAULT_FG_COLOR;
             (*buf)[i][j].bg_color = DEFAULT_BG_COLOR;
@@ -80,8 +80,8 @@ void init_buffer(buffer *buf) {
     }
 }
 
-void free_buffer(buffer *buf) {
-    for(size_t i = 0; i < ROWS; i++) {
+void free_buffer(buffer *buf, size_t rows) {
+    for(size_t i = 0; i < rows; i++) {
         free((*buf)[i]);
     }
     free(*buf);
@@ -126,7 +126,7 @@ void append_color_to_str(const wchar_t *format, struct str_buffer *str_buf, stru
     }
 }
 
-void render_buffer_to_str(buffer *buf, struct str_buffer *str_buf) {
+void render_buffer_to_str(buffer *buf, struct str_buffer *str_buf, size_t rows, size_t cols) {
     str_buf->length = 0;
     append_to_str(L"\e[0m\e[2J\e[H", str_buf); //reset mode, erase screen, return cursor to home position
     append_color_to_str(L"\e[38;2;%d;%d;%dm", str_buf, DEFAULT_FG_COLOR);
@@ -135,8 +135,8 @@ void render_buffer_to_str(buffer *buf, struct str_buffer *str_buf) {
     } 
     struct color prev_fg_color = DEFAULT_FG_COLOR;
     struct color prev_bg_color = DEFAULT_BG_COLOR;
-    for(size_t i = 0; i < ROWS; i++) {
-        for(size_t j = 0; j < COLS; j++) {
+    for(size_t i = 0; i < rows; i++) {
+        for(size_t j = 0; j < cols; j++) {
             struct cell *cur_cell = &(*buf)[i][j];
             if(!eq_colors(&cur_cell->fg_color, &prev_fg_color)) {
                 append_color_to_str(L"\e[38;2;%d;%d;%dm", str_buf, cur_cell->fg_color);
