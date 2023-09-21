@@ -1,6 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <wchar.h>
+#include <stdbool.h>
 #include "tui.h"
+#include "tui-elements.h"
 
 int get_loading_bar(wchar_t **loading_bar, size_t length, unsigned char percentage) {
     if(length <= 3 || percentage > 100) {
@@ -45,4 +48,21 @@ void print_borders(struct tui *tui, struct color *fg_color, struct color *bg_col
     border_line[0] = L'┗';
     border_line[tui->cols - 2] = L'┛';
     print_tui(tui, print_opts, border_line);
+}
+
+void print_menu(struct tui *tui, struct menu *menu) {
+    struct print_options print_opts = { .x = menu->x, .y = menu->y, .fg_color = menu->fg_color, .bg_color = menu->bg_color };
+    for(int i = 0; i < menu->options_size; i++) {
+        bool selected = i == menu->selected;
+        if(selected) {
+            print_opts.fg_color = menu->selected_fg_color;
+            print_opts.bg_color = menu->selected_bg_color;
+        }
+        print_tui(tui, print_opts, menu->options[i]);
+        print_opts.y++;
+        if(selected) {
+            print_opts.fg_color = menu->fg_color;
+            print_opts.bg_color = menu->bg_color;
+        }
+    }
 }

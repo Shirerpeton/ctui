@@ -59,6 +59,24 @@ int main() {
     unsigned int step;
     size_t loading_bar_length = 50;
     wchar_t *loading_bar = malloc(loading_bar_length * sizeof(wchar_t));
+    size_t options_size = 5;
+    wchar_t *options[options_size];
+    options[0] = L"option 1";
+    options[1] = L"option 2";
+    options[2] = L"option 3";
+    options[3] = L"option 4";
+    options[4] = L"option 5";
+    struct color selected_bg_color = { .r = 255, .g = 255, .b = 255};
+    struct menu menu = { 
+        .x = 10,
+        .y = 10,
+        .fg_color = &curr_fg_color,
+        .bg_color = NULL,
+        .selected_fg_color = NULL,
+        .selected_bg_color = &selected_bg_color,
+        .options_size = options_size,
+        .options = options
+    };
     while(true) {
         step = frame % TOTAL_STEPS; 
         if(step == 0) {
@@ -66,25 +84,29 @@ int main() {
         } else {
             interpolate_color(&new_fg_color, &curr_fg_color, step);
         }
+        selected_bg_color.r = 255 - curr_fg_color.r;
+        selected_bg_color.g = 255 - curr_fg_color.g;
+        selected_bg_color.b = 255 - curr_fg_color.b;
         clear(tui);
         print_borders(tui, &curr_fg_color, NULL);
-        print_tui(tui, print_opts, L"something");
+        print_menu(tui, &menu);
+        //print_tui(tui, print_opts, L"something");
         get_loading_bar(&loading_bar, loading_bar_length, frame % 100);
-        print_opts.y = 15;
+        print_opts.y = 25;
         print_tui(tui, print_opts, loading_bar);
         print_opts.x = print_opts.x + loading_bar_length;
         wchar_t percent[5];
         swprintf(percent, 5, L"%d%%", frame % 100);
         print_tui(tui, print_opts, percent);
         print_opts.x = 10;
-        print_opts.y = 20;
+        print_opts.y = 26;
         wchar_t temp[50];
         swprintf(temp, 50, L"r: %d", curr_fg_color.r);
         print_tui(tui, print_opts, temp);
-        print_opts.y = 21;
+        print_opts.y = 27;
         swprintf(temp, 50, L"g: %d", curr_fg_color.g);
         print_tui(tui, print_opts, temp);
-        print_opts.y = 22;
+        print_opts.y = 28;
         swprintf(temp, 50, L"b: %d", curr_fg_color.b);
         print_tui(tui, print_opts, temp);
         print_opts.y = 10;
@@ -96,8 +118,14 @@ int main() {
                     if(seq[1] == '[') {
                         switch(seq[2]) {
                             case 'A': //up arrow
+                                if(menu.selected > 0) {
+                                    menu.selected--;
+                                }
                                 break;
                             case 'B': //down arrow
+                                if(menu.selected < options_size) {
+                                    menu.selected++;
+                                }
                                 break;
                             case 'C': //right arrow
                                 break;
