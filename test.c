@@ -114,7 +114,7 @@ int main() {
         if(read(STDIN_FILENO, &seq[0], 1) > 0) {
             if(seq[0] == '\e') {
                 if(read(STDIN_FILENO, &seq[1], 1) > 0 &&
-                   read(STDIN_FILENO, &seq[2], 1) > 0) {
+                        read(STDIN_FILENO, &seq[2], 1) > 0) {
                     if(seq[1] == '[') {
                         switch(seq[2]) {
                             case 'A': //up arrow
@@ -123,7 +123,7 @@ int main() {
                                 }
                                 break;
                             case 'B': //down arrow
-                                if(menu.selected < options_size) {
+                                if(menu.selected < options_size - 1) {
                                     menu.selected++;
                                 }
                                 break;
@@ -139,10 +139,9 @@ int main() {
             } else if(seq[0] == 'q') {
                 break;
             }
-        } else {
-            wprintf(L"frame: %d\n", frame++);
-            nanosleep(&req, NULL);
         }
+        wprintf(L"frame: %d\n", frame++);
+        nanosleep(&req, NULL);
     }
 
     tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
