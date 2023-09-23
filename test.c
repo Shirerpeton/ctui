@@ -148,6 +148,7 @@ int main() {
     fputws(L"\e[?1049l", stdout); //disable alternate buffer
     fputws(L"\e[?25h", stdout); //set cursor invisible
 
+    free(loading_bar);
     free_tui(tui);
 
     return 0;
