@@ -9,7 +9,8 @@ struct color {
 };
 
 struct cell {
-    wchar_t character;
+    wchar_t *content;
+    unsigned int width;
     struct color fg_color;
     struct color bg_color;
 };

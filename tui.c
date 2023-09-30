@@ -1,16 +1,19 @@
+#define _XOPEN_SOURCE
 #include <stdio.h>
 #include <wchar.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include "tui.h"
 
 void init_buffer(buffer *buf, size_t rows, size_t cols);
-void free_buffer(buffer *buf, size_t rows);
+void free_buffer(buffer *buf, size_t rows, size_t cols);
 void init_str_buffer(size_t capacity, struct str_buffer *str_buf);
 void free_str_buffer(struct str_buffer *str_buf);
 void render_buffer_to_str(buffer *buf, struct str_buffer *str_buf, size_t rows, size_t cols);
 
 const struct color DEFAULT_FG_COLOR = { .r = 255, .g = 255, .b = 255 };
 const struct color DEFAULT_BG_COLOR = { .r = 10, .g = 10, .b = 10 };
+const unsigned int MAX_CHARS_PER_CELL = 5;
 const bool NO_DEFAULT_BG_COLOR = true; 
 
 struct tui *init_tui(size_t rows, size_t cols) {
@@ -26,7 +29,7 @@ struct tui *init_tui(size_t rows, size_t cols) {
 }
 
 void free_tui(struct tui *tui) {
-    free_buffer(&tui->buf, tui->rows);
+    free_buffer(&tui->buf, tui->rows, tui->cols);
     free_str_buffer(&tui->str_buf);
     free(tui->debug);
     free(tui);
@@ -42,37 +45,66 @@ void refresh(struct tui *tui) {
 }
 
 int print_tui(struct tui *tui, struct print_options print_opt, wchar_t *str) {
-    int len = wcslen(str);
-    if(print_opt.x + len > tui->cols ||
-        print_opt.y > tui->rows) {
-        return 1;
+    unsigned int max_width = (tui->cols - print_opt.x) * MAX_CHARS_PER_CELL;
+    unsigned int width = wcswidth(str, tui->cols * MAX_CHARS_PER_CELL); 
+    if(width > max_width) {
+        return -1;
     }
+    if(print_opt.x > tui->cols ||
+        print_opt.y > tui->rows) {
+        return -1;
+    }
+    unsigned int len = wcslen(str);
+    wchar_t cell_buf[MAX_CHARS_PER_CELL - 2];
+    unsigned int cell_buf_len = 0;
+    struct cell *cur_cell = &tui->buf[print_opt.y][print_opt.x];
     for(int i = 0; i < len; i++) {
-        struct cell *curr_cell = &tui->buf[print_opt.y][print_opt.x + i];
-        curr_cell->character = str[i];
-        if(print_opt.fg_color != NULL) {
-            curr_cell->fg_color.r = print_opt.fg_color->r;
-            curr_cell->fg_color.g = print_opt.fg_color->g;
-            curr_cell->fg_color.b = print_opt.fg_color->b;
-        }
-        if(print_opt.bg_color != NULL) {
-            curr_cell->bg_color.r = print_opt.bg_color->r;
-            curr_cell->bg_color.g = print_opt.bg_color->g;
-            curr_cell->bg_color.b = print_opt.bg_color->b;
+        unsigned int char_width = wcwidth(str[i]);
+        if(char_width == 0) {
+            if(cell_buf_len < MAX_CHARS_PER_CELL - 2) {
+                cell_buf[cell_buf_len] = str[i]; 
+                cell_buf_len++;
+            } 
+        } if(char_width > 0) {
+            if(cell_buf_len == 0) {
+                cur_cell->content[0] = str[i];
+                cur_cell->content[1] = L'\0';
+            } else {
+                wcsncpy(cur_cell->content, cell_buf, cell_buf_len);
+                cur_cell->content[cell_buf_len] = str[i];
+                cur_cell->content[cell_buf_len + 1] = L'\0';
+                cell_buf_len = 0;
+            }
+            cur_cell->width = char_width;
+            if(print_opt.fg_color != NULL) {
+                cur_cell->fg_color.r = print_opt.fg_color->r;
+                cur_cell->fg_color.g = print_opt.fg_color->g;
+                cur_cell->fg_color.b = print_opt.fg_color->b;
+            }
+            if(print_opt.bg_color != NULL) {
+                cur_cell->bg_color.r = print_opt.bg_color->r;
+                cur_cell->bg_color.g = print_opt.bg_color->g;
+                cur_cell->bg_color.b = print_opt.bg_color->b;
+            }
+            cur_cell += char_width;
+        } else {
+            continue;
         }
     }
     return 0;
 }
 
 void debug_tui(struct tui *tui, wchar_t *str) {
-    wcpncpy(tui->debug, str, tui->cols);
+    wcsncpy(tui->debug, str, tui->cols);
 }
 
 void clear(struct tui *tui) {
     for(int i = 0; i < tui->rows; i++) {
         for(int j = 0; j < tui->cols; j++) {
             struct cell *curr_cell = &tui->buf[i][j];
-            curr_cell->character = L' ';
+            curr_cell->content[0] = L' ';
+            curr_cell->content[1] = L'\0';
+            curr_cell->width = 1;
             curr_cell->fg_color = DEFAULT_FG_COLOR;
             curr_cell->bg_color = DEFAULT_BG_COLOR;
         }
@@ -84,15 +116,20 @@ void init_buffer(buffer *buf, size_t rows, size_t cols) {
     for(size_t i = 0; i < rows; i++) {
         (*buf)[i] = malloc(cols * sizeof(struct cell));
         for(size_t j = 0; j < cols; j++) {
-            (*buf)[i][j].character = L' ';
+            (*buf)[i][j].content = malloc(MAX_CHARS_PER_CELL * sizeof(wchar_t));
+            (*buf)[i][j].content[0] = L' ';
+            (*buf)[i][j].content[1] = L'\0';
             (*buf)[i][j].fg_color = DEFAULT_FG_COLOR;
             (*buf)[i][j].bg_color = DEFAULT_BG_COLOR;
         }
     }
 }
 
-void free_buffer(buffer *buf, size_t rows) {
+void free_buffer(buffer *buf, size_t rows, size_t cols) {
     for(size_t i = 0; i < rows; i++) {
+        for(size_t j = 0; j < cols; j++) {
+            free((*buf)[i][j].content);
+        }
         free((*buf)[i]);
     }
     free(*buf);
@@ -147,7 +184,7 @@ void render_buffer_to_str(buffer *buf, struct str_buffer *str_buf, size_t rows, 
     struct color prev_fg_color = DEFAULT_FG_COLOR;
     struct color prev_bg_color = DEFAULT_BG_COLOR;
     for(size_t i = 0; i < rows; i++) {
-        for(size_t j = 0; j < cols; j++) {
+        for(size_t j = 0; j < cols;) {
             struct cell *cur_cell = &(*buf)[i][j];
             if(!eq_colors(&cur_cell->fg_color, &prev_fg_color)) {
                 append_color_to_str(L"\e[38;2;%d;%d;%dm", str_buf, cur_cell->fg_color);
@@ -159,7 +196,8 @@ void render_buffer_to_str(buffer *buf, struct str_buffer *str_buf, size_t rows, 
                     append_color_to_str(L"\e[48;2;%d;%d;%dm", str_buf, cur_cell->bg_color);
                 }
             }
-            append_char_to_str(cur_cell->character, str_buf);
+            append_to_str(cur_cell->content, str_buf);
+            j += cur_cell->width;
             prev_fg_color = cur_cell->fg_color;
             prev_bg_color = cur_cell->bg_color;
         }
