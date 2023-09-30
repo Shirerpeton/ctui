@@ -61,9 +61,9 @@ int main() {
     wchar_t *loading_bar = malloc(loading_bar_length * sizeof(wchar_t));
     size_t options_size = 5;
     wchar_t *options[options_size];
-    options[0] = L"option 1";
+    options[0] = L"option \u200b\u200b1";
     options[1] = L"option 2";
-    options[2] = L"option 3";
+    options[2] = L"option 3漢字";
     options[3] = L"option 4";
     options[4] = L"option 5";
     struct color selected_bg_color = { .r = 255, .g = 255, .b = 255};
