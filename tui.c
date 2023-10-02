@@ -46,10 +46,6 @@ void refresh(struct tui *tui) {
 
 int print_tui_len(struct tui *tui, struct print_options print_opt, wchar_t *str, unsigned int len) {
     unsigned int max_width = (tui->cols - print_opt.x) * MAX_CHARS_PER_CELL;
-    unsigned int width = wcswidth(str, tui->cols * MAX_CHARS_PER_CELL); 
-    if(width > max_width) {
-        return -1;
-    }
     if(print_opt.x > tui->cols ||
         print_opt.y > tui->rows) {
         return -1;
@@ -57,9 +53,10 @@ int print_tui_len(struct tui *tui, struct print_options print_opt, wchar_t *str,
     wchar_t cell_buf[MAX_CHARS_PER_CELL - 2];
     unsigned int cell_buf_len = 0;
     struct cell *cur_cell = &tui->buf[print_opt.y][print_opt.x];
+    unsigned int total_width = 0;
     for(int i = 0; i < len; i++) {
         wchar_t ch = str[i];
-        if(ch == L'\0' || ch == L'\n') {
+        if(ch == L'\n' || ch == L'\0') {
             continue;
         }
         unsigned int char_width = wcwidth(ch);
@@ -88,6 +85,10 @@ int print_tui_len(struct tui *tui, struct print_options print_opt, wchar_t *str,
                 cur_cell->bg_color.r = print_opt.bg_color->r;
                 cur_cell->bg_color.g = print_opt.bg_color->g;
                 cur_cell->bg_color.b = print_opt.bg_color->b;
+            }
+            total_width += char_width;
+            if(total_width > max_width) {
+                return -1;
             }
             cur_cell += char_width;
         } else {
