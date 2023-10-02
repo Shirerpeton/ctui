@@ -2,6 +2,8 @@
 #define TUI_H
 #include <stdlib.h> 
 
+extern const unsigned int MAX_CHARS_PER_CELL;
+
 struct color {
     unsigned char r;
     unsigned char g;
