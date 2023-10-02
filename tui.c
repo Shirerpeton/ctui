@@ -44,7 +44,7 @@ void refresh(struct tui *tui) {
     fflush(stdout);
 }
 
-int print_tui(struct tui *tui, struct print_options print_opt, wchar_t *str) {
+int print_tui_len(struct tui *tui, struct print_options print_opt, wchar_t *str, unsigned int len) {
     unsigned int max_width = (tui->cols - print_opt.x) * MAX_CHARS_PER_CELL;
     unsigned int width = wcswidth(str, tui->cols * MAX_CHARS_PER_CELL); 
     if(width > max_width) {
@@ -54,24 +54,27 @@ int print_tui(struct tui *tui, struct print_options print_opt, wchar_t *str) {
         print_opt.y > tui->rows) {
         return -1;
     }
-    unsigned int len = wcslen(str);
     wchar_t cell_buf[MAX_CHARS_PER_CELL - 2];
     unsigned int cell_buf_len = 0;
     struct cell *cur_cell = &tui->buf[print_opt.y][print_opt.x];
     for(int i = 0; i < len; i++) {
-        unsigned int char_width = wcwidth(str[i]);
+        wchar_t ch = str[i];
+        if(ch == L'\0' || ch == L'\n') {
+            continue;
+        }
+        unsigned int char_width = wcwidth(ch);
         if(char_width == 0) {
             if(cell_buf_len < MAX_CHARS_PER_CELL - 2) {
-                cell_buf[cell_buf_len] = str[i]; 
+                cell_buf[cell_buf_len] = ch; 
                 cell_buf_len++;
             } 
         } if(char_width > 0) {
             if(cell_buf_len == 0) {
-                cur_cell->content[0] = str[i];
+                cur_cell->content[0] = ch;
                 cur_cell->content[1] = L'\0';
             } else {
                 wcsncpy(cur_cell->content, cell_buf, cell_buf_len);
-                cur_cell->content[cell_buf_len] = str[i];
+                cur_cell->content[cell_buf_len] = ch;
                 cur_cell->content[cell_buf_len + 1] = L'\0';
                 cell_buf_len = 0;
             }
@@ -92,6 +95,10 @@ int print_tui(struct tui *tui, struct print_options print_opt, wchar_t *str) {
         }
     }
     return 0;
+}
+
+int print_tui(struct tui *tui, struct print_options print_opt, wchar_t *str) {
+    return print_tui_len(tui, print_opt, str, wcslen(str));
 }
 
 void debug_tui(struct tui *tui, wchar_t *str) {

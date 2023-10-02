@@ -43,6 +43,7 @@ void free_tui(struct tui *tui);
 void refresh(struct tui *tui);
 void clear(struct tui *tui);
 int print_tui(struct tui *tui, struct print_options opt, wchar_t *str);
+int print_tui_len(struct tui *tui, struct print_options opt, wchar_t *str, unsigned int len);
 void debug_tui(struct tui *tui, wchar_t *str);
 
 #endif
