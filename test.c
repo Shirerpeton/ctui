@@ -4,15 +4,15 @@
 #include <stdbool.h>
 #include <termios.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <time.h>
 #include "tui.h"
 #include "tui-elements.h"
 
 const int DELAY = 1.0 / 24.0 * 1000000000;
 const unsigned int TOTAL_STEPS = 24;
-const size_t ROWS = 30;
-const size_t COLS = 100;
 
 void set_rand_color(struct color *color) {
     color->r = rand() % 255;
@@ -31,6 +31,17 @@ void interpolate_color(struct color *new_color, struct color *curr_color, unsign
     curr_color->b = interpolate(new_color->b, curr_color->b, step);
 }
 
+struct tui *tui = NULL;
+
+void handle_winch(int sig, siginfo_t *si, void *uc) {
+    struct winsize window;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &window);
+    if(tui != NULL) {
+        free_tui(tui);
+    }
+    tui = init_tui(window.ws_row - 1, window.ws_col);
+}
+
 int main() {
     srand(time(NULL));
     setlocale(LC_CTYPE, "");
@@ -47,7 +58,17 @@ int main() {
     int fcntl_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
     fcntl(STDIN_FILENO, F_SETFL, fcntl_flags | O_NONBLOCK);
 
-    struct tui *tui = init_tui(ROWS, COLS);
+    struct winsize window;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &window);
+    tui = init_tui(window.ws_row - 1, window.ws_col - 2);
+
+    struct sigaction sa;
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = handle_winch;
+    sigemptyset(&sa.sa_mask);
+    if(sigaction(SIGWINCH, &sa, NULL) == -1) {
+        return -1;
+    }
 
     char seq[3];
     unsigned int frame = 0;
@@ -140,7 +161,7 @@ int main() {
                 break;
             }
         }
-        wprintf(L"frame: %d\n", frame++);
+        frame++;
         nanosleep(&req, NULL);
     }
 
