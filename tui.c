@@ -44,6 +44,27 @@ void refresh(struct tui *tui) {
     fflush(stdout);
 }
 
+void flush_cell_buf(
+        struct cell *cur_cell,
+        struct print_options *print_opt,
+        wchar_t *cell_buf,
+        unsigned int cell_buf_len,
+        unsigned int cell_buf_width) {
+    wcsncpy(cur_cell->content, cell_buf, cell_buf_len);
+    cur_cell->content[cell_buf_len] = L'\0';
+    cur_cell->width = cell_buf_width;
+    if(print_opt->fg_color != NULL) {
+        cur_cell->fg_color.r = print_opt->fg_color->r;
+        cur_cell->fg_color.g = print_opt->fg_color->g;
+        cur_cell->fg_color.b = print_opt->fg_color->b;
+    }
+    if(print_opt->bg_color != NULL) {
+        cur_cell->bg_color.r = print_opt->bg_color->r;
+        cur_cell->bg_color.g = print_opt->bg_color->g;
+        cur_cell->bg_color.b = print_opt->bg_color->b;
+    }
+}
+
 int print_tui_len(struct tui *tui, struct print_options print_opt, wchar_t *str, unsigned int len) {
     unsigned int max_width = (tui->cols - print_opt.x) * MAX_CHARS_PER_CELL;
     if(print_opt.x > tui->cols ||
@@ -52,6 +73,7 @@ int print_tui_len(struct tui *tui, struct print_options print_opt, wchar_t *str,
     }
     wchar_t cell_buf[MAX_CHARS_PER_CELL - 2];
     unsigned int cell_buf_len = 0;
+    unsigned int cell_buf_width = 0;
     struct cell *cur_cell = &tui->buf[print_opt.y][print_opt.x];
     unsigned int total_width = 0;
     for(int i = 0; i < len; i++) {
@@ -60,40 +82,26 @@ int print_tui_len(struct tui *tui, struct print_options print_opt, wchar_t *str,
             continue;
         }
         unsigned int char_width = wcwidth(ch);
-        if(char_width == 0) {
+        if(char_width == 0 || cell_buf_width == 0) {
             if(cell_buf_len < MAX_CHARS_PER_CELL - 2) {
                 cell_buf[cell_buf_len] = ch; 
                 cell_buf_len++;
+                cell_buf_width += char_width;
             } 
-        } if(char_width > 0) {
-            if(cell_buf_len == 0) {
-                cur_cell->content[0] = ch;
-                cur_cell->content[1] = L'\0';
-            } else {
-                wcsncpy(cur_cell->content, cell_buf, cell_buf_len);
-                cur_cell->content[cell_buf_len] = ch;
-                cur_cell->content[cell_buf_len + 1] = L'\0';
-                cell_buf_len = 0;
-            }
-            cur_cell->width = char_width;
-            if(print_opt.fg_color != NULL) {
-                cur_cell->fg_color.r = print_opt.fg_color->r;
-                cur_cell->fg_color.g = print_opt.fg_color->g;
-                cur_cell->fg_color.b = print_opt.fg_color->b;
-            }
-            if(print_opt.bg_color != NULL) {
-                cur_cell->bg_color.r = print_opt.bg_color->r;
-                cur_cell->bg_color.g = print_opt.bg_color->g;
-                cur_cell->bg_color.b = print_opt.bg_color->b;
-            }
-            total_width += char_width;
+        } else {
+            flush_cell_buf(cur_cell, &print_opt, cell_buf, cell_buf_len, cell_buf_width);
+            total_width += cell_buf_width;
             if(total_width > max_width) {
                 return -1;
             }
-            cur_cell += char_width;
-        } else {
-            continue;
+            cur_cell += cell_buf_width;
+            cell_buf[0] = ch;
+            cell_buf_len = 1;
+            cell_buf_width = char_width;
         }
+    }
+    if(cell_buf_len > 0) {
+        flush_cell_buf(cur_cell, &print_opt, cell_buf, cell_buf_len, cell_buf_width);
     }
     return 0;
 }
